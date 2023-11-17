@@ -1,8 +1,7 @@
-use advent2023::common::Result;
+use advent2023::error::Result;
 
 fn main() -> Result<()> {
-    let day = advent2023::common::Day::new(1)?;
-    dbg!(day);
+    let day = advent2023::day::Day::new(1)?;
 
     Ok(())
 }

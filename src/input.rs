@@ -1,34 +1,7 @@
-use std::io::{Read, Write};
-
-#[derive(Debug)]
-pub enum AdventError {
-    InvalidDay,
-    IO(std::io::Error),
-    ReqwestError(reqwest::Error),
-    Throttled,
-}
-
-impl std::fmt::Display for AdventError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl std::error::Error for AdventError {}
-
-impl From<std::io::Error> for AdventError {
-    fn from(value: std::io::Error) -> Self {
-        Self::IO(value)
-    }
-}
-
-impl From<reqwest::Error> for AdventError {
-    fn from(value: reqwest::Error) -> Self {
-        Self::ReqwestError(value)
-    }
-}
-
-pub type Result<T> = std::result::Result<T, AdventError>;
+use super::{
+    error::{AdventError, Result},
+    log,
+};
 
 #[derive(Debug)]
 pub struct Input {
@@ -40,16 +13,14 @@ fn cache_path(day: u8) -> std::path::PathBuf {
 }
 
 impl Input {
-    fn get(day: u8) -> Result<Self> {
+    pub(crate) fn get(day: u8) -> Result<Self> {
         let cache = cache_path(day);
         if cache.exists() {
+            log::info(&format!("Using cached input {cache:?}"));
             let data = std::fs::read_to_string(cache)?;
             Ok(Input { data })
         } else {
-            let input = Self::get_http(day)?;
-            input.save(day)?;
-
-            Ok(input)
+            Ok(Self::get_http(day)?)
         }
     }
 
@@ -59,12 +30,16 @@ impl Input {
         if !root.exists() {
             std::fs::create_dir_all(root)?;
         }
-        std::fs::write(path, &self.data)?;
+        std::fs::write(&path, &self.data)?;
+
+        log::info(&format!("Cached input to {path:?}"));
 
         Ok(())
     }
 
     fn get_http(day: u8) -> Result<Input> {
+        log::info(&format!("Getting input via http request..."));
+
         let session = std::fs::read_to_string("session_token")?;
         let session = session.trim();
 
@@ -72,7 +47,7 @@ impl Input {
 
         if let Ok(metadata) = throttle_path.metadata() {
             if let Ok(time_since_last) = metadata.modified()?.elapsed() {
-                if time_since_last < std::time::Duration::from_secs(1 * 60) {
+                if time_since_last < std::time::Duration::from_secs(15 * 60) {
                     return Err(AdventError::Throttled);
                 }
             }
@@ -92,24 +67,9 @@ impl Input {
             .send()?;
 
         let data = response.text()?;
+        let input = Input { data };
+        input.save(day)?;
 
-        Ok(Input { data })
-    }
-}
-
-#[derive(Debug)]
-pub struct Day {
-    day: u8,
-    input: Input,
-}
-
-impl Day {
-    pub fn new(day: u8) -> Result<Self> {
-        if (0..25).contains(&day) {
-            let input = Input::get(day)?;
-            Ok(Self { day, input })
-        } else {
-            Err(AdventError::InvalidDay)
-        }
+        Ok(input)
     }
 }
