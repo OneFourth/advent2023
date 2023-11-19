@@ -1,7 +1,5 @@
-use super::{
-    error::{AdventError, Result},
-    log,
-};
+use color_eyre::eyre::eyre;
+use color_eyre::Result;
 
 #[derive(Debug)]
 pub struct Input {
@@ -16,7 +14,6 @@ impl Input {
     pub(crate) fn get(day: u8) -> Result<Self> {
         let cache = cache_path(day);
         if cache.exists() {
-            log::info(&format!("Using cached input {cache:?}"));
             let data = std::fs::read_to_string(cache)?;
             Ok(Input { data })
         } else {
@@ -32,14 +29,10 @@ impl Input {
         }
         std::fs::write(&path, &self.data)?;
 
-        log::info(&format!("Cached input to {path:?}"));
-
         Ok(())
     }
 
     fn get_http(day: u8) -> Result<Input> {
-        log::info(&format!("Getting input via http request..."));
-
         let session = std::fs::read_to_string("session_token")?;
         let session = session.trim();
 
@@ -48,7 +41,7 @@ impl Input {
         if let Ok(metadata) = throttle_path.metadata() {
             if let Ok(time_since_last) = metadata.modified()?.elapsed() {
                 if time_since_last < std::time::Duration::from_secs(15 * 60) {
-                    return Err(AdventError::Throttled);
+                    return Err(eyre!("Throttled"));
                 }
             }
         }
