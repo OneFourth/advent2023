@@ -3,7 +3,7 @@ use color_eyre::Result;
 
 #[derive(Debug)]
 pub struct Input {
-    data: String,
+    pub data: String,
 }
 
 fn cache_path(day: u8) -> std::path::PathBuf {

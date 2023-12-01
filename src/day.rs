@@ -11,7 +11,7 @@ pub trait Day {
 
 pub fn get(day: u8) -> Result<impl Day> {
     let day = match day {
-        1 => day01::Day01,
+        1 => day01::Day01::default(),
         /*
         2 => Day02,
         3 => Day03,
