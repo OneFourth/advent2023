@@ -1,5 +1,4 @@
 use super::Day;
-use crate::input::Input;
 
 #[derive(Debug)]
 struct Line(Vec<u8>);
@@ -101,7 +100,11 @@ pub(crate) struct Day01 {
 
 impl Day for Day01 {
     fn setup(&mut self) -> color_eyre::eyre::Result<()> {
-        self.values = Input::get(1)?.data.lines().map(|s| s.into()).collect();
+        self.values = crate::input::Input::get(1)?
+            .data
+            .lines()
+            .map(|s| s.into())
+            .collect();
 
         Ok(())
     }

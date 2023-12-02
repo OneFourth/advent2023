@@ -1,4 +1,4 @@
-use advent2023::day::{get, Day};
+use advent2023::day::get;
 use color_eyre::Result;
 
 fn print_section(label: &str, output: Option<&str>, time: &mut std::time::Instant) {
@@ -42,7 +42,7 @@ fn main() -> Result<()> {
 
     let mut now = std::time::Instant::now();
 
-    let mut day = get(day)?;
+    let mut day = get(day);
 
     day.setup()?;
     print_section("Setup", None, &mut now);
