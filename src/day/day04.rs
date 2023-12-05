@@ -4,20 +4,18 @@ use super::Day;
 
 #[derive(Debug)]
 struct Card {
-    id: usize,
     hand: Vec<usize>,
     winning: Vec<usize>,
 }
 
 impl From<&str> for Card {
     fn from(value: &str) -> Self {
-        let (id, rest) = value.trim_start_matches("Card").split_once(":").unwrap();
-        let id = id.trim().parse().unwrap();
-        let (l, r) = rest.split_once("|").unwrap();
+        let (_, rest) = value.trim_start_matches("Card").split_once(':').unwrap();
+        let (l, r) = rest.split_once('|').unwrap();
         let hand = l.split_whitespace().map(|s| s.parse().unwrap()).collect();
         let winning = r.split_whitespace().map(|s| s.parse().unwrap()).collect();
 
-        Self { id, hand, winning }
+        Self { hand, winning }
     }
 }
 
