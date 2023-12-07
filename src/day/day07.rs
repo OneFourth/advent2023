@@ -2,54 +2,104 @@ use std::collections::HashMap;
 
 use color_eyre::eyre::eyre;
 use winnow::ascii::{alphanumeric1, digit1, newline, space1};
-use winnow::combinator::{separated, separated_pair};
+use winnow::combinator::{alt, repeat, separated, separated_pair};
 use winnow::{PResult, Parser};
 
 use super::Day;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum HandType {
     HighCard,
-    OnePair(char),
-    TwoPair(char, char),
-    ThreeOfAKind(char),
-    FullHouse(char, char),
-    FourOfAKind(char),
-    FiveOfAKind(char),
+    OnePair,
+    TwoPair,
+    ThreeOfAKind,
+    FullHouse,
+    FourOfAKind,
+    FiveOfAKind,
 }
 
-impl std::cmp::PartialOrd for HandType {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        fn get_order(item: &HandType) -> usize {
-            match item {
-                HandType::HighCard => 1,
-                HandType::OnePair(_) => 2,
-                HandType::TwoPair(_, _) => 3,
-                HandType::ThreeOfAKind(_) => 4,
-                HandType::FullHouse(_, _) => 5,
-                HandType::FourOfAKind(_) => 6,
-                HandType::FiveOfAKind(_) => 7,
-            }
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+enum Value {
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Jack,
+    Queen,
+    King,
+    Ace,
+}
+
+impl Value {
+    fn part2_order(&self) -> usize {
+        use Value::*;
+        match self {
+            Jack => 0,
+            Two => 1,
+            Three => 2,
+            Four => 3,
+            Five => 4,
+            Six => 5,
+            Seven => 6,
+            Eight => 7,
+            Nine => 8,
+            Ten => 9,
+            Queen => 10,
+            King => 11,
+            Ace => 12,
         }
-
-        Some(get_order(self).cmp(&get_order(other)))
     }
 }
 
-impl std::cmp::Ord for HandType {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
-    }
+fn parse_card(i: &mut &str) -> PResult<Value> {
+    alt((
+        '2'.value(Value::Two),
+        '3'.value(Value::Three),
+        '4'.value(Value::Four),
+        '5'.value(Value::Five),
+        '6'.value(Value::Six),
+        '7'.value(Value::Seven),
+        '8'.value(Value::Eight),
+        '9'.value(Value::Nine),
+        'T'.value(Value::Ten),
+        'J'.value(Value::Jack),
+        'Q'.value(Value::Queen),
+        'K'.value(Value::King),
+        'A'.value(Value::Ace),
+    ))
+    .parse_next(i)
 }
 
-impl std::str::FromStr for HandType {
+#[derive(Debug, PartialEq, Eq, Clone)]
+struct Hand {
+    cards: [Value; 5],
+}
+
+impl std::str::FromStr for Hand {
     type Err = color_eyre::eyre::Report;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let v: Vec<_> = repeat(5, parse_card)
+            .parse(s)
+            .map_err(|e| eyre!(e.to_string()))?;
+
+        let cards = v.try_into().unwrap();
+
+        Ok(Self { cards })
+    }
+}
+
+impl Hand {
+    fn get_type_part1(&self) -> HandType {
         let mut map = HashMap::new();
 
-        for c in s.chars() {
-            *map.entry(c).or_insert(0) += 1;
+        for v in self.cards {
+            *map.entry(v).or_insert(0) += 1;
         }
 
         let mut counts: Vec<_> = map.into_iter().collect();
@@ -58,63 +108,61 @@ impl std::str::FromStr for HandType {
         use HandType::*;
 
         match counts[..] {
-            [(c, 5)] => Ok(FiveOfAKind(c)),
-            [(c, 4), _] => Ok(FourOfAKind(c)),
-            [(c1, 3), (c2, 2)] => Ok(FullHouse(c1, c2)),
-            [(c, 3), (_, 1), (_, 1)] => Ok(ThreeOfAKind(c)),
-            [(c1, 2), (c2, 2), (_, 1)] => Ok(TwoPair(c1, c2)),
-            [(c, 2), (_, 1), (_, 1), (_, 1)] => Ok(OnePair(c)),
-            [(_, 1), (_, 1), (_, 1), (_, 1), (_, 1)] => Ok(HighCard),
-            _ => Err(eyre!("could not parse hand type {s}")),
+            [(_, 5)] => FiveOfAKind,
+            [(_, 4), _] => FourOfAKind,
+            [(_, 3), (_, 2)] => FullHouse,
+            [(_, 3), (_, 1), (_, 1)] => ThreeOfAKind,
+            [(_, 2), (_, 2), (_, 1)] => TwoPair,
+            [(_, 2), (_, 1), (_, 1), (_, 1)] => OnePair,
+            [(_, 1), (_, 1), (_, 1), (_, 1), (_, 1)] => HighCard,
+            _ => unreachable!(),
         }
     }
-}
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct Hand {
-    cards: String,
-    kind: HandType,
-}
+    fn get_type_part2(&self) -> HandType {
+        let mut map = HashMap::new();
 
-impl std::cmp::PartialOrd for Hand {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        let ordering = self.kind.cmp(&other.kind).then_with(|| {
-            const ORDER: [char; 13] = [
-                '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A',
-            ];
+        for v in self.cards {
+            *map.entry(v).or_insert(0) += 1;
+        }
 
-            for (c1, c2) in self.cards.chars().zip(other.cards.chars()) {
-                let o = ORDER
-                    .iter()
-                    .position(|&c| c == c1)
-                    .cmp(&ORDER.iter().position(|&c| c == c2));
+        let jacks = *map.get(&Value::Jack).unwrap_or(&0);
+        let mut counts: Vec<_> = map.into_iter().collect();
+        counts.sort_by(|(_, v1), (_, v2)| v2.cmp(v1));
 
-                if !o.is_eq() {
-                    return o;
-                }
-            }
+        use HandType::*;
 
-            std::cmp::Ordering::Equal
-        });
-
-        Some(ordering)
-    }
-}
-
-impl std::cmp::Ord for Hand {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-impl std::str::FromStr for Hand {
-    type Err = color_eyre::eyre::Report;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            cards: s.to_string(),
-            kind: s.parse()?,
-        })
+        match jacks {
+            0 => match counts[..] {
+                [(_, 5)] => FiveOfAKind,
+                [(_, 4), _] => FourOfAKind,
+                [(_, 3), (_, 2)] => FullHouse,
+                [(_, 3), (_, 1), (_, 1)] => ThreeOfAKind,
+                [(_, 2), (_, 2), (_, 1)] => TwoPair,
+                [(_, 2), (_, 1), (_, 1), (_, 1)] => OnePair,
+                [(_, 1), (_, 1), (_, 1), (_, 1), (_, 1)] => HighCard,
+                _ => unreachable!(),
+            },
+            1 => match counts[..] {
+                [(_, 4), ..] => FiveOfAKind,
+                [(_, 3), ..] => FourOfAKind,
+                [(_, 2), (_, 2), ..] => FullHouse,
+                [(_, 2), ..] => ThreeOfAKind,
+                _ => OnePair,
+            },
+            2 => match counts[..] {
+                [(_, 3), ..] => FiveOfAKind,
+                [(_, 2), (_, 2), ..] => FourOfAKind,
+                _ => ThreeOfAKind,
+            },
+            3 => match counts[..] {
+                [(Value::Jack, 3), (_, 2)] => FiveOfAKind,
+                _ => FourOfAKind,
+            },
+            4 => FiveOfAKind,
+            5 => FiveOfAKind,
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -139,7 +187,7 @@ impl Day for Day07 {
 
     fn part1(&self) -> color_eyre::eyre::Result<String> {
         let mut hands = self.hands.clone();
-        hands.sort();
+        hands.sort_by_cached_key(|(h, _)| (h.get_type_part1(), h.cards));
 
         Ok(hands
             .iter()
@@ -150,6 +198,19 @@ impl Day for Day07 {
     }
 
     fn part2(&self) -> color_eyre::eyre::Result<String> {
-        todo!()
+        let mut hands = self.hands.clone();
+        hands.sort_by_cached_key(|(h, _)| {
+            (
+                h.get_type_part2(),
+                h.cards.iter().map(|c| c.part2_order()).collect::<Vec<_>>(),
+            )
+        });
+
+        Ok(hands
+            .iter()
+            .enumerate()
+            .map(|(rank, (_, bid))| (rank + 1) * bid)
+            .sum::<usize>()
+            .to_string())
     }
 }
