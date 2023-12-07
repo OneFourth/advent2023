@@ -10,3 +10,4 @@ color-eyre = "0.6.2"
 rangemap = "1.4.0"
 rayon = "1.8.0"
 reqwest = { version = "0.11.22", features = ["blocking"] }
+winnow = "0.5.25"

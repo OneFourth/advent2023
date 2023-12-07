@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+use color_eyre::eyre::eyre;
+use winnow::ascii::{digit1, newline, space1};
+use winnow::combinator::{alt, delimited, preceded, separated, separated_pair};
+use winnow::{PResult, Parser};
+
 use super::Day;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -9,38 +14,32 @@ enum Colour {
     Blue,
 }
 
-impl From<&str> for Colour {
-    fn from(value: &str) -> Self {
-        use Colour::*;
-        match value {
-            "red" => Red,
-            "green" => Green,
-            "blue" => Blue,
-            _ => panic!("Invalid colour"),
-        }
-    }
+fn parse_colour(i: &mut &str) -> PResult<Colour> {
+    alt((
+        "red".value(Colour::Red),
+        "green".value(Colour::Green),
+        "blue".value(Colour::Blue),
+    ))
+    .parse_next(i)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 struct Turn(usize, usize, usize);
 
-impl From<&str> for Turn {
-    fn from(value: &str) -> Self {
-        let parts: HashMap<_, _> = value
-            .split(',')
-            .map(|s| {
-                let (count, colour) = s.trim().split_once(' ').unwrap();
-                let colour: Colour = colour.into();
-                (colour, count.parse().unwrap())
-            })
-            .collect();
+fn parse_turn(i: &mut &str) -> PResult<Turn> {
+    let parts: HashMap<_, usize> = separated(
+        1..=3,
+        separated_pair(preceded(space1, digit1.parse_to()), space1, parse_colour)
+            .map(|(d, c)| (c, d)),
+        ',',
+    )
+    .parse_next(i)?;
 
-        Turn(
-            *parts.get(&Colour::Red).unwrap_or(&0),
-            *parts.get(&Colour::Green).unwrap_or(&0),
-            *parts.get(&Colour::Blue).unwrap_or(&0),
-        )
-    }
+    Ok(Turn(
+        *parts.get(&Colour::Red).unwrap_or(&0),
+        *parts.get(&Colour::Green).unwrap_or(&0),
+        *parts.get(&Colour::Blue).unwrap_or(&0),
+    ))
 }
 
 #[derive(Debug, Default)]
@@ -67,15 +66,14 @@ impl Game {
     }
 }
 
-impl From<&str> for Game {
-    fn from(value: &str) -> Self {
-        let (game_id, rest) = value.split_once(':').unwrap();
-        let id: usize = game_id.trim_start_matches("Game ").parse().unwrap();
+fn parse_game(i: &mut &str) -> PResult<Game> {
+    let id = delimited(("Game", space1), digit1, ':')
+        .parse_to()
+        .parse_next(i)?;
 
-        let sequence = rest.trim().split(';').map(|cubes| cubes.into()).collect();
+    let sequence = separated(1.., parse_turn, ';').parse_next(i)?;
 
-        Self { id, sequence }
-    }
+    Ok(Game { id, sequence })
 }
 
 #[derive(Debug, Default)]
@@ -86,7 +84,9 @@ pub(crate) struct Day02 {
 impl Day for Day02 {
     fn setup(&mut self) -> color_eyre::eyre::Result<()> {
         let input = crate::input::Input::get(2)?;
-        self.games = input.data.lines().map(|g| g.into()).collect();
+        self.games = separated(1.., parse_game, newline)
+            .parse(&input.data.trim())
+            .map_err(|e| eyre!(e.to_string()))?;
 
         Ok(())
     }
