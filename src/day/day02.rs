@@ -85,7 +85,7 @@ impl Day for Day02 {
     fn setup(&mut self) -> color_eyre::eyre::Result<()> {
         let input = crate::input::Input::get(2)?;
         self.games = separated(1.., parse_game, newline)
-            .parse(&input.data.trim())
+            .parse(input.data.trim())
             .map_err(|e| eyre!(e.to_string()))?;
 
         Ok(())
