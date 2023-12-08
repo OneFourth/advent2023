@@ -1,5 +1,10 @@
 use std::ops::Range;
 
+use color_eyre::eyre::eyre;
+use winnow::ascii::{digit1, newline, space1};
+use winnow::combinator::{delimited, preceded, separated, separated_pair};
+use winnow::{PResult, Parser};
+
 use super::Day;
 
 #[derive(Debug)]
@@ -8,15 +13,21 @@ struct Card {
     winning: Vec<usize>,
 }
 
-impl From<&str> for Card {
-    fn from(value: &str) -> Self {
-        let (_, rest) = value.trim_start_matches("Card").split_once(':').unwrap();
-        let (l, r) = rest.split_once('|').unwrap();
-        let hand = l.split_whitespace().map(|s| s.parse().unwrap()).collect();
-        let winning = r.split_whitespace().map(|s| s.parse().unwrap()).collect();
+fn parse_number_list(i: &mut &str) -> PResult<Vec<usize>> {
+    separated(1.., digit1.parse_to::<usize>(), space1).parse_next(i)
+}
 
-        Self { hand, winning }
-    }
+fn parse_card(i: &mut &str) -> PResult<Card> {
+    preceded(
+        ("Card", space1, digit1, ':'),
+        separated_pair(
+            delimited(space1, parse_number_list, space1),
+            '|',
+            preceded(space1, parse_number_list),
+        ),
+    )
+    .map(|(hand, winning)| Card { hand, winning })
+    .parse_next(i)
 }
 
 impl Card {
@@ -36,7 +47,9 @@ pub(crate) struct Day04 {
 impl Day for Day04 {
     fn setup(&mut self) -> color_eyre::eyre::Result<()> {
         let input = crate::input::Input::get(4)?;
-        self.cards = input.data.lines().map(|l| l.into()).collect();
+        self.cards = separated(1.., parse_card, newline)
+            .parse(input.data.trim())
+            .map_err(|e| eyre!(e.to_string()))?;
 
         Ok(())
     }
