@@ -77,7 +77,7 @@ impl Day for Day08 {
 
         while *current != Name(['Z', 'Z', 'Z']) {
             count += 1;
-            let node = self.nodes.get(&current).unwrap();
+            let node = self.nodes.get(current).unwrap();
             match direction.next().unwrap() {
                 Direction::Left => current = &node.0,
                 Direction::Right => current = &node.1,
@@ -107,7 +107,7 @@ impl Day for Day08 {
             {
                 count[i] += 1;
                 should_loop = true;
-                let node = self.nodes.get(&n).unwrap();
+                let node = self.nodes.get(n).unwrap();
                 match d {
                     Direction::Left => *n = &node.0,
                     Direction::Right => *n = &node.1,
@@ -117,7 +117,7 @@ impl Day for Day08 {
 
         Ok(count
             .into_iter()
-            .reduce(|a, b| num::integer::lcm(a, b))
+            .reduce(num::integer::lcm)
             .unwrap()
             .to_string())
     }

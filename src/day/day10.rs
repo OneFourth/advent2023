@@ -73,37 +73,25 @@ impl Tile {
     fn has_north_connection(&self) -> bool {
         use Tile::*;
 
-        match self {
-            Vertical | NW | NE | Start => true,
-            _ => false,
-        }
+        matches!(self, Vertical | NW | NE | Start)
     }
 
     fn has_south_connection(&self) -> bool {
         use Tile::*;
 
-        match self {
-            Vertical | SW | SE | Start => true,
-            _ => false,
-        }
+        matches!(self, Vertical | SW | SE | Start)
     }
 
     fn has_east_connection(&self) -> bool {
         use Tile::*;
 
-        match self {
-            Horizontal | NE | SE | Start => true,
-            _ => false,
-        }
+        matches!(self, Horizontal | NE | SE | Start)
     }
 
     fn has_west_connection(&self) -> bool {
         use Tile::*;
 
-        match self {
-            Horizontal | NW | SW | Start => true,
-            _ => false,
-        }
+        matches!(self, Horizontal | NW | SW | Start)
     }
 }
 
