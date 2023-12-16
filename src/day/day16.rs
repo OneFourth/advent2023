@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use rayon::prelude::*;
+
 use super::Day;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -240,19 +242,19 @@ impl Day for Day16 {
     }
 
     fn part2(&self) -> color_eyre::eyre::Result<String> {
-        let top = (0..self.grid.stride).map(|x| Transform {
+        let top = (0..self.grid.stride).into_par_iter().map(|x| Transform {
             direction: Direction::Down,
             position: (x as isize, -1),
         });
-        let bottom = (0..self.grid.stride).map(|x| Transform {
+        let bottom = (0..self.grid.stride).into_par_iter().map(|x| Transform {
             direction: Direction::Down,
             position: (x as isize, self.grid.height as isize),
         });
-        let left = (0..self.grid.height).map(|y| Transform {
+        let left = (0..self.grid.height).into_par_iter().map(|y| Transform {
             direction: Direction::Right,
             position: (-1, y as isize),
         });
-        let right = (0..self.grid.height).map(|y| Transform {
+        let right = (0..self.grid.height).into_par_iter().map(|y| Transform {
             direction: Direction::Left,
             position: (self.grid.stride as isize, y as isize),
         });
